@@ -1,3 +1,16 @@
+/*
+   PCODE : internal encoding for SPAN, REL or DB
+   SPAN  : a text range created by user mouse selection [vpos,len]   , where len <256
+           and a payload
+   payload of SPAN sharing same Pcode are stored together in an array
+   
+   REL  : an payload with pcodes, might have no pcode after deletion
+
+   DB   : 1~255 , database id.
+
+   Forward Barrel: pcode as key, value is an array
+   backward Barrel: inverted index for pcode, an array of all other pcode containing it.
+*/
 var error="";
 var container={};
 var createBarrel=function() {
@@ -15,11 +28,17 @@ var addSpan=function(start,len,payload){
 	F.push(payload);
 	return n;
 }
-var get=function(pcode,n) {
+var getPayload=function(pcode,n) {
 	var F=this.forward[pcode];
 	if (F) {
 		if (isRel(pcode)) return F[0];
 		else return F[n];
+	}
+}
+var getChildren=function(pcode) {
+	var F=this.forward[pcode];
+	if (F && isRel(pcode)) {
+		return F.filter(function(i,n){return n>0});
 	}
 }
 var _removeSpan=function(F,n) {
@@ -36,6 +55,9 @@ var _removeSpan=function(F,n) {
 var isRel=function(pcode) {
 	return (pcode%256===0)
 }
+var _removeForward=function() {
+
+}
 var _removeBackward=function(pcode,source) {
 	var p=this.backward[pcode];
 	var i=p.indexOf(source);
@@ -45,11 +67,24 @@ var _removeBackward=function(pcode,source) {
 	}
 	p.splice(i,1);
 }
+var _removeChild=function(rel,childpcode) {
+	var pcodes=this.forward[rel];
+
+	var i=pcodes.indexOf(childpcode);
+	if (i>0) {
+		pcodes.splice(i,i);
+	}
+}
 var _removeRel=function(pcode) {
 	var pcodes=this.forward[pcode];
 	for (var i=1;i<pcodes.length;i++) {
 		_removeBackward.call(this,pcodes[i],pcode);
 	}
+	var by=this.backward[pcode];
+	if (by && by.length) {
+		by.map(function(rel){ _removeChild.call(this,rel,pcode)},this);
+	}
+
 	delete this.forward[pcode];
 }
 var remove=function(pcode,n) {
@@ -62,7 +97,7 @@ var remove=function(pcode,n) {
 	}
 }
 var _createRelPcode=function() {
-	return (this.relationCount+1)*256;
+	return (++this.relationCount)*256;
 }
 var _addBackward=function(target,source) {
 	if (!this.backward[target]) this.backward[target]=[];
@@ -98,7 +133,8 @@ var open=function(dbname,opts) {
 			,relationCount:0
 			,addSpan:addSpan
 			,addRel:addRel
-			,get:get
+			,getPayload:getPayload
+			,getChildren:getChildren
 			,by:by
 			,remove:remove
 		}
@@ -118,6 +154,10 @@ var pcodeFromSpan=function(start,len){
 	if (len<1) {
 		error="len too big";
 		return -2;
+	}
+	if (start<1) {
+		error="wrong start";
+		return -3;
 	}
 	return start*256+len;
 }

@@ -20,22 +20,22 @@ describe("",function(){
 		assert.equal(pcode,-2);
 	});
 
-	it("add and get simple tag",function(){
+	it("add and getPayload simple tag",function(){
 		var payload={"tag":"important"};
 		var pcode=API.pcodeFromSpan(5,2);
 
 		var n=pd.addSpan(5,2,payload);
-		var py=pd.get(pcode,n);
+		var py=pd.getPayload(pcode,n);
 		assert.deepEqual(py,payload);
 
 		pd.remove(pcode,py);
-		py=pd.get(pcode,n);
+		py=pd.getPayload(pcode,n);
 		assert.equal(!!py,false);
 
 
 		n=pd.addSpan(5,2,payload);
 		pd.remove(pcode,n);
-		py=pd.get(pcode,n);
+		py=pd.getPayload(pcode,n);
 		assert.equal(!!py,false);
 	});
 
@@ -55,7 +55,7 @@ describe("",function(){
 		assert.equal(p.length,1);
 		assert.equal(p[0],pcode);
 
-		var py=pd.get(pcode);
+		var py=pd.getPayload(pcode);
 		assert.deepEqual(py,payload);
 	});
 
@@ -67,5 +67,24 @@ describe("",function(){
 		var p=pd.by(pcode1);
 		assert.equal(p.length,0);
 
+	});
+
+	it("remove intermediate relation",function() {
+		var pcode1=API.pcodeFromSpan(1,2);
+		var pcode2=API.pcodeFromSpan(2,2);
+		var pcode3=API.pcodeFromSpan(3,2);
+		var pcode4=API.pcodeFromSpan(4,2);
+
+		var rel1=pd.addRel({tag:'t1'},pcode1,pcode2);	
+		var rel2=pd.addRel({tag:'t2'},pcode3,pcode4);
+		var rel3=pd.addRel({tag:'complex relation'},rel1,rel2);
+
+		var children=pd.getChildren(rel3);
+		assert.equal(children.length,2);
+
+		pd.remove(rel1);
+
+		var children=pd.getChildren(rel3);
+		assert.equal(children.length,1);
 	});
 });
