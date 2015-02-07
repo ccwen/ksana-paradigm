@@ -1,1 +1,1 @@
-module.exports=require("./paradigm");
+module.exports={barrel:require("./paradigm"),citation:require("./citation")};

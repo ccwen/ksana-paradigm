@@ -1,7 +1,7 @@
 var assert=require("assert");
-var API=require("..");
+var API=require("..").barrel;
 var pd=null,pcode;
-describe("",function(){
+describe("Barrel",function(){
 	it("open paradigm",function(){
 		pd=API.open("db1");
 		assert.equal(!!pd,true);

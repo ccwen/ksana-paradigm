@@ -13,10 +13,7 @@
 */
 var error="";
 var container={};
-var createBarrel=function() {
-	var barrel={};
-	return barrel;
-}
+
 
 var addSpan=function(start,len,payload){
 	var pcode=pcodeFromSpan(start,len);
@@ -127,8 +124,8 @@ var by=function(pcode) {
 var open=function(dbname,opts) {
 	if (!container[dbname]) {
 		container[dbname]={
-			forward:createBarrel()
-			,backward:createBarrel()
+			forward:{}
+			,backward:{}
 			,opts:opts
 			,relationCount:0
 			,addSpan:addSpan
