@@ -18,6 +18,7 @@ var extract=function(text,opts) {
 		var m1end=m1start+m1.length;
 		var i=m.indexOf(m2);
 		var m2start=i+idx;
+
 		var m2end=m2start+m2.length;
 		out.push([m1start,m1end,m1,m2start,m2end,m2]);
 	});
@@ -32,18 +33,19 @@ var extract=function(text,opts) {
 			for (var j=0;j<out[i].length;j++) {
 				if (typeof out[i][j]!="number") continue;
 				while (offsets[noffset]<out[i][j] && noffset<offsets.length)  noffset++;
-				if (offsets[noffset]==out[i][j]) {
-					out[i][j]=opts.startvpos+noffset;
-				}
+				out[i][j]=opts.startvpos+noffset;
 			}
 		}
 	}
+
 
 	//convert to length
 	out.forEach(function(m){
 		m[1]=m[1]-m[0];
 		m[4]=m[4]-m[3];
+
 	})
+
 	return out;
 }
 module.exports={extract:extract};
