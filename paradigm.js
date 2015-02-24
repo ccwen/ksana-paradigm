@@ -36,6 +36,7 @@ var getExternalDB=function(dbid) {
 	return container[dbname];
 }
 var getPayload=function(pcode,n) {
+	//pcode can be a span,  [span, dbid] or [span , "dbname"]
 	if (pcode[1]) {
 		var externaldb=this.getExternalDB(pcode[1]);
 		if (!externaldb) return null;
@@ -144,12 +145,15 @@ var addRel=function() {
 	return pcode;
 }
 var by=function(pcode) {
+	//pcode can be a span,  [span, dbid] or [span , "dbname"]
 	if (pcode[1]) {
 		var externaldb=this.getExternalDB(pcode[1]);
 		if (!externaldb) return null;
 		return externaldb.by([pcode[0],0]);
+	} else if (typeof pcode[0]=="number") {
+		pcode=pcode[0];
 	}
-	return this.backward[pcode[0]]||[];
+	return this.backward[pcode||[]];
 }
 
 var Paradigm=function(opts) {
