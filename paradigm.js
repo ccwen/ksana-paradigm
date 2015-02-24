@@ -17,15 +17,33 @@ var container={};
 
 var addSpan=function(start,len,payload){
 	var pcode=pcodeFromSpan(start,len);
-	var F=this.forward[pcode];
+	var F=this.forward[pcode[0]];
 	if (!F) {
-		this.forward[pcode]=F=[];
+		this.forward[pcode[0]]=F=[];
 	}
 	var n=F.length;
 	F.push(payload);
 	return n;
 }
+var getDBName=function(dbid) {
+	return this.dbid[dbid];
+}
+var getExternalDB=function(dbid) {
+	var dbname=dbid;
+	if (typeof dbid==="number") {
+		dbname=this.getDBName(dbid);
+	}
+	return container[dbname];
+}
 var getPayload=function(pcode,n) {
+	if (pcode[1]) {
+		var externaldb=this.getExternalDB(pcode[1]);
+		if (!externaldb) return null;
+		return externaldb.getPayload(pcode[0],n);
+	} else if (typeof pcode[0]=="number") {
+		pcode=pcode[0];
+	}
+
 	var F=this.forward[pcode];
 	if (F) {
 		if (isRel(pcode)) return F[0];
@@ -35,7 +53,7 @@ var getPayload=function(pcode,n) {
 var getChildren=function(pcode) {
 	var F=this.forward[pcode];
 	if (F && isRel(pcode)) {
-		return F.filter(function(i,n){return n>0});
+		return F.filter(function(i,n){return (n>0)});
 	}
 }
 var _removeSpan=function(F,n) {
@@ -50,11 +68,9 @@ var _removeSpan=function(F,n) {
 	}	
 }
 var isRel=function(pcode) {
-	return (pcode%256===0)
+	return (pcode%256===0 && pcode>255)
 }
-var _removeForward=function() {
 
-}
 var _removeBackward=function(pcode,source) {
 	var p=this.backward[pcode];
 	var i=p.indexOf(source);
@@ -85,6 +101,9 @@ var _removeRel=function(pcode) {
 	delete this.forward[pcode];
 }
 var remove=function(pcode,n) {
+	if (typeof pcode!=="number") {
+		pcode=pcode[0];
+	}
 	var F=this.forward[pcode];
 	if (!F)return;
 	if (isRel(pcode)){
@@ -97,6 +116,7 @@ var _createRelPcode=function() {
 	return (++this.relationCount)*256;
 }
 var _addBackward=function(target,source) {
+
 	if (!this.backward[target]) this.backward[target]=[];
 	this.backward[target].push(source);
 }
@@ -113,34 +133,36 @@ var addRel=function() {
 
 	this.forward[pcode]=[JSON.parse(JSON.stringify(payload))];
 	for (var i=0;i<args.length;i++) {
-		this.forward[pcode].push(args[i]);
-		_addBackward.call(this,args[i],pcode);
+		var child=args[i];
+		if (typeof child!="number" && typeof child!=="string" && child[1]===0) {
+			child=child[0]; //same db, only store span
+		}
+		this.forward[pcode].push(child);
+		
+		if (typeof child==="number") _addBackward.call(this,child,pcode);
 	}
 	return pcode;
 }
 var by=function(pcode) {
-	return this.backward[pcode]||[];
-}
-var open=function(dbname,opts) {
-	if (!container[dbname]) {
-		container[dbname]={
-			forward:{}
-			,backward:{}
-			,opts:opts
-			,relationCount:0
-			,addSpan:addSpan
-			,addRel:addRel
-			,getPayload:getPayload
-			,getChildren:getChildren
-			,by:by
-			,remove:remove
-		}
+	if (pcode[1]) {
+		var externaldb=this.getExternalDB(pcode[1]);
+		if (!externaldb) return null;
+		return externaldb.by([pcode[0],0]);
 	}
-	return container[dbname];
+	return this.backward[pcode[0]]||[];
 }
 
-var pcodeFromSpan=function(start,len){
+var Paradigm=function(opts) {
+	this.forward={};
+	this.backward={};
+	this.dbid=[];
+	this.relationCount=0;
+	this.opts=opts;
+}
+
+var pcodeFromSpan=function(start,len,db){
 	if (typeof len=="undefined" && typeof start!="undefined" && typeof start[1]!="undefined") {
+		db=len;
 		len=start[1];
 		start=start[0];
 	}
@@ -156,16 +178,45 @@ var pcodeFromSpan=function(start,len){
 		error="wrong start";
 		return -3;
 	}
-	return start*256+len;
+	var code=start*256+len, dbid=0;
+	if (db) {
+		dbid=this.dbid.indexOf(db);
+		if (dbid==-1) {
+			this.dbid.push(db);
+			dbid=this.dbid.length-1;
+		}
+	}
+	return [code,dbid];
 }
 var lasterror=function() {
 	return error;
 }
 var spanFromPcode=function(pcode) {
-	return [pcode>>8,pcode %256];
+	var out= [pcode[0]>>8,pcode[0] %256];
+	if (pcode[1]) out.push(pcode[1]);
+	return out;
+}
+var open=function(dbname,opts) {
+	if (!container[dbname]) {
+		container[dbname]=new Paradigm(opts);
+		container[dbname].dbid.push(dbname);
+	}
+	return container[dbname];
 }
 
 
+Paradigm.prototype.addSpan=addSpan;
+Paradigm.prototype.addRel=addRel;
+Paradigm.prototype.getPayload=getPayload;
+Paradigm.prototype.getChildren=getChildren;
+Paradigm.prototype.by=by;
+Paradigm.prototype.remove=remove;
+Paradigm.prototype.pcodeFromSpan=pcodeFromSpan;
+Paradigm.prototype.spanFromPcode=spanFromPcode;
+Paradigm.prototype.getDBName=getDBName;
+Paradigm.prototype.getExternalDB=getExternalDB;
 
-var API={open:open,pcodeFromSpan:pcodeFromSpan,spanFromPcode:spanFromPcode,lasterror:lasterror,isRel:isRel};
+
+
+var API={open:open,lasterror:lasterror,isRel:isRel};
 module.exports=API;

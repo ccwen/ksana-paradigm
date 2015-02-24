@@ -10,6 +10,6 @@ describe("Citation",function(){
 	it("extract citation",function() {
 		var citations=API.extract(text,{pat:pat,startvpos:0,tokenize:tokenize});
 		assert.equal(citations.length,3);
-		console.log(citations)
+		//console.log(citations)
 	})
 });
