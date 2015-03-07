@@ -1,19 +1,18 @@
 /*
-   PCODE : internal encoding for SPAN, REL or DB
+   PCODE : internal encoding for SPAN, REL with optional DB
+
    SPAN  : a text range created by user mouse selection [vpos,len]   , where len <256
-           and a payload
-   payload of SPAN sharing same Pcode are stored together in an array
-   
+
    REL  : an payload with pcodes, might have no pcode after deletion
 
    DB   : 1~255 , database id.
 
    Forward Barrel: pcode as key, value is an array
    backward Barrel: inverted index for pcode, an array of all other pcode containing it.
+   dbid : external db id, each paradigm might have different dbid for same dbname
 */
 var error="";
 var container={};
-
 
 var addSpan=function(start,len,payload){
 	var pcode=pcodeFromSpan(start,len);
@@ -66,7 +65,7 @@ var _removeSpan=function(F,n) {
 	} else {
 
 		if (F[n]) F.splice(n,1);
-	}	
+	}
 }
 var isRel=function(pcode) {
 	return (pcode%256===0 && pcode>255)
@@ -94,9 +93,9 @@ var _removeRel=function(pcode) {
 	for (var i=1;i<pcodes.length;i++) {
 		_removeBackward.call(this,pcodes[i],pcode);
 	}
-	var by=this.backward[pcode];
-	if (by && by.length) {
-		by.map(function(rel){ _removeChild.call(this,rel,pcode)},this);
+	var rels=this.backward[pcode];
+	if (rels && rels.length) {
+    rels.map(function(rel){ _removeChild.call(this,rel,pcode)},this);
 	}
 
 	delete this.forward[pcode];
@@ -139,7 +138,7 @@ var addRel=function() {
 			child=child[0]; //same db, only store span
 		}
 		this.forward[pcode].push(child);
-		
+
 		if (typeof child==="number") _addBackward.call(this,child,pcode);
 	}
 	return pcode;
@@ -208,6 +207,38 @@ var open=function(dbname,opts) {
 	return container[dbname];
 }
 
+/*
+var buildBackward=function() {
+  for (var pcode in this.forward) {
+    var rels=this.forward[i];
+    if (!isRel(pcode)) continue;
+    for (var j=0;j<rels.length;j++) {
+      var child=rels[j];
+      if (typeof child==="number"){
+        _addBackward.call( this, child, pcode );
+      } else if (child[1]){ //foreign
+        // todo , build backward
+        //add backward if loaded
+      }
+    }
+  }
+}
+*/
+var loadFromString=function(dbname,data) {
+  var serialized=JSON.parse(data);
+  var db=open(dbname,serialized.opts);
+  db.forward=serialized.forward;
+  db.backward=serialized.backward;
+  db.relationCount=serialized.relationCount;
+  db.dbid=serialized.dbid;
+  return db;
+  //buildBackward.call(this);
+}
+var saveToString=function() {
+  var serialized={forward:this.forward,backward:this.backward,
+    dbid:this.dbid,opts:this.opts,relationCount:this.relationCount};
+  return JSON.stringify(serialized);
+}
 
 Paradigm.prototype.addSpan=addSpan;
 Paradigm.prototype.addRel=addRel;
@@ -219,8 +250,9 @@ Paradigm.prototype.pcodeFromSpan=pcodeFromSpan;
 Paradigm.prototype.spanFromPcode=spanFromPcode;
 Paradigm.prototype.getDBName=getDBName;
 Paradigm.prototype.getExternalDB=getExternalDB;
+Paradigm.prototype.saveToString=saveToString;
 
 
 
-var API={open:open,lasterror:lasterror,isRel:isRel};
+var API={open:open,lasterror:lasterror,isRel:isRel,loadFromString:loadFromString};
 module.exports=API;
