@@ -15,7 +15,7 @@ var error="";
 var container={};
 
 var addSpan=function(start,len,payload){
-	var pcode=pcodeFromSpan(start,len);
+	var pcode=pcodeFromSpan.call(this,start,len);
 	var F=this.forward[pcode[0]];
 	if (!F) {
 		this.forward[pcode[0]]=F=[];
@@ -24,10 +24,20 @@ var addSpan=function(start,len,payload){
 	F.push(payload);
 	return n;
 }
+var setSpanCaption=function(start,len,caption) {
+	var pcode=pcodeFromSpan.call(this,start,len);
+	var F=this.forward[pcode[0]];
+	if (!F) {
+		this.addSpan(start,len,{caption:caption});
+	} else {
+		F[0].caption=caption;
+	}
+}
 var getDBName=function(dbid) {
 	return this.dbid[dbid];
 }
-var getExternalDB=function(dbid) {
+
+var getExternal=function(dbid) {
 	var dbname=dbid;
 	if (typeof dbid==="number") {
 		dbname=this.getDBName(dbid);
@@ -37,7 +47,7 @@ var getExternalDB=function(dbid) {
 var getPayload=function(pcode,n) {
 	//pcode can be a span,  [span, dbid] or [span , "dbname"]
 	if (pcode[1]) {
-		var externaldb=this.getExternalDB(pcode[1]);
+		var externaldb=this.getExternal(pcode[1]);
 		if (!externaldb) return null;
 		return externaldb.getPayload(pcode[0],n);
 	} else if (typeof pcode[0]=="number") {
@@ -47,7 +57,8 @@ var getPayload=function(pcode,n) {
 	var F=this.forward[pcode];
 	if (F) {
 		if (isRel(pcode)) return F[0];
-		else return F[n];
+		else if (typeof n=="number") return F[n]
+		else return F;
 	}
 }
 var getChildren=function(pcode) {
@@ -146,7 +157,7 @@ var addRel=function() {
 var by=function(pcode) {
 	//pcode can be a span,  [span, dbid] or [span , "dbname"]
 	if (pcode[1]) {
-		var externaldb=this.getExternalDB(pcode[1]);
+		var externaldb=this.getExternal(pcode[1]);
 		if (!externaldb) return null;
 		return externaldb.by([pcode[0],0]);
 	} else if (typeof pcode[0]=="number") {
@@ -225,8 +236,9 @@ var buildBackward=function() {
 }
 */
 var loadFromString=function(dbname,data) {
-  var serialized=JSON.parse(data);
-  var db=open(dbname,serialized.opts);
+  var db=open(dbname);
+	if (!data) return db;
+	var serialized=JSON.parse(data);
   db.forward=serialized.forward;
   db.backward=serialized.backward;
   db.relationCount=serialized.relationCount;
@@ -239,9 +251,38 @@ var saveToString=function() {
     dbid:this.dbid,opts:this.opts,relationCount:this.relationCount};
   return JSON.stringify(serialized);
 }
+var createBySelections=function(selections,foreign_selections,payload) {
+	var args=[];
+	args.push(payload||{caption:"unnamed"});
 
+	for (var i=0;i<selections.length;i++) {
+		var sel=selections[i];
+		this.setSpanCaption(sel[0],sel[1],sel[2]);
+		args.push( this.pcodeFromSpan(sel[0],sel[1]) )
+		args.push(" "); //place holder for description
+	}
+
+	for (var j in foreign_selections) {
+		var ext=this.getExternal(j);
+		var sels=foreign_selections[j];
+		for (var k=0;k<sels.length;k++) {
+			var sel=sels[k];
+			ext.setSpanCaption(sel[0],sel[1],sel[2]);
+			args.push( this.pcodeFromSpan(sel[0],sel[1],j) );
+			args.push(" "); //place holder for description
+		}
+	}
+
+	return this.addRel.apply(this,args);
+}
+var get=function(pcode) {
+	return this.forward[pcode];
+}
+Paradigm.prototype.get=get;
 Paradigm.prototype.addSpan=addSpan;
 Paradigm.prototype.addRel=addRel;
+Paradigm.prototype.setSpanCaption=setSpanCaption;
+Paradigm.prototype.createBySelections=createBySelections;
 Paradigm.prototype.getPayload=getPayload;
 Paradigm.prototype.getChildren=getChildren;
 Paradigm.prototype.by=by;
@@ -249,10 +290,8 @@ Paradigm.prototype.remove=remove;
 Paradigm.prototype.pcodeFromSpan=pcodeFromSpan;
 Paradigm.prototype.spanFromPcode=spanFromPcode;
 Paradigm.prototype.getDBName=getDBName;
-Paradigm.prototype.getExternalDB=getExternalDB;
+Paradigm.prototype.getExternal=getExternal;
 Paradigm.prototype.saveToString=saveToString;
-
-
 
 var API={open:open,lasterror:lasterror,isRel:isRel,loadFromString:loadFromString};
 module.exports=API;
