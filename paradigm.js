@@ -259,7 +259,7 @@ var createBySelections=function(selections,foreign_selections,payload) {
 		var sel=selections[i];
 		this.setSpanCaption(sel[0],sel[1],sel[2]);
 		args.push( this.pcodeFromSpan(sel[0],sel[1]) )
-		args.push(" "); //place holder for description
+		args.push("…"); //place holder for description
 	}
 
 	for (var j in foreign_selections) {
@@ -269,7 +269,7 @@ var createBySelections=function(selections,foreign_selections,payload) {
 			var sel=sels[k];
 			ext.setSpanCaption(sel[0],sel[1],sel[2]);
 			args.push( this.pcodeFromSpan(sel[0],sel[1],j) );
-			args.push(" "); //place holder for description
+			args.push("…"); //place holder for description
 		}
 	}
 
