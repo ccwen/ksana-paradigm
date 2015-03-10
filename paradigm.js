@@ -251,30 +251,7 @@ var saveToString=function() {
     dbid:this.dbid,opts:this.opts,relationCount:this.relationCount};
   return JSON.stringify(serialized);
 }
-var createBySelections=function(selections,foreign_selections,payload) {
-	var args=[];
-	args.push(payload||{caption:"unnamed"});
 
-	for (var i=0;i<selections.length;i++) {
-		var sel=selections[i];
-		this.setSpanCaption(sel[0],sel[1],sel[2]);
-		args.push( this.pcodeFromSpan(sel[0],sel[1]) )
-		args.push("…"); //place holder for description
-	}
-
-	for (var j in foreign_selections) {
-		var ext=this.getExternal(j);
-		var sels=foreign_selections[j];
-		for (var k=0;k<sels.length;k++) {
-			var sel=sels[k];
-			ext.setSpanCaption(sel[0],sel[1],sel[2]);
-			args.push( this.pcodeFromSpan(sel[0],sel[1],j) );
-			args.push("…"); //place holder for description
-		}
-	}
-
-	return this.addRel.apply(this,args);
-}
 var get=function(pcode) {
 	return this.forward[pcode];
 }
@@ -282,7 +259,7 @@ Paradigm.prototype.get=get;
 Paradigm.prototype.addSpan=addSpan;
 Paradigm.prototype.addRel=addRel;
 Paradigm.prototype.setSpanCaption=setSpanCaption;
-Paradigm.prototype.createBySelections=createBySelections;
+//Paradigm.prototype.createBySelections=createBySelections;
 Paradigm.prototype.getPayload=getPayload;
 Paradigm.prototype.getChildren=getChildren;
 Paradigm.prototype.by=by;
