@@ -154,6 +154,11 @@ var addRel=function() {
 		this.forward[pcode].push(child);
 
 		if (typeof child==="number") _addBackward.call(this,child,pcode);
+		else if (typeof child!=="string" && typeof child[1]==="number"){ //external li
+			var externaldb=this.getExternal(child[1]);
+			var foreignpcode=externaldb.externalPCode(pcode,this.dbid[0]);
+			_addBackward.call(externaldb, child[0], foreignpcode);
+		}
 	}
 	return pcode;
 }
@@ -168,7 +173,25 @@ var by=function(pcode) {
 	}
 	return this.backward[pcode||[]];
 }
-
+var filterByVpos=function(fromvpos,tovpos) {
+	var out=[];
+	for (var pcode in this.backward) {
+			pcode=parseInt(pcode);
+			var len=pcode %256
+			if (len===0) continue;
+			var start=pcode >> 8 ;
+			if (start>=fromvpos && start+len<=tovpos) {
+				var targetpcodes=this.backward[pcode];
+				for (var i=0;i<targetpcodes.length;i++) {
+					var targetpcode=targetpcodes[i];
+					var targetpnode=this.get(targetpcode);
+					//[start_offset,end_offset, pcode, pnode]
+					out.push([start,start+len-1,targetpcode,targetpnode]);
+				}
+			}
+	}
+	return out;
+}
 var Paradigm=function(opts) {
 	this.forward={};
 	this.backward={};
@@ -283,6 +306,7 @@ Paradigm.prototype.setSpanCaption=setSpanCaption;
 Paradigm.prototype.getPayload=getPayload;
 Paradigm.prototype.getChildren=getChildren;
 Paradigm.prototype.by=by;
+Paradigm.prototype.filterByVpos=filterByVpos;
 Paradigm.prototype.remove=remove;
 Paradigm.prototype.pcodeFromSpan=pcodeFromSpan;
 Paradigm.prototype.spanFromPcode=spanFromPcode;
