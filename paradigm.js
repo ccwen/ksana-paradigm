@@ -37,13 +37,16 @@ var getDBName=function(dbid) {
 	return this.dbid[dbid];
 }
 
-var getExternal=function(dbid) {
-	var dbname=dbid;
-	if (typeof dbid==="number") {
-		dbname=this.getDBName(dbid);
+var getExternal=function(dbid_name) {
+	var dbname=dbid_name;
+	if (typeof dbid_name==="number") {
+		dbname=this.getDBName(dbid_name);
 	}
 	return container[dbname];
 }
+//var getExternalDbIdByName=function(name) {
+//	return this.dbid.indexOf(name);
+//}
 var getPayload=function(pcode,n) {
 	//pcode can be a span,  [span, dbid] or [span , "dbname"]
 	if (pcode[1]) {
@@ -173,7 +176,16 @@ var Paradigm=function(opts) {
 	this.relationCount=0;
 	this.opts=opts;
 }
+var externalPCode=function(pcode,db) {
+	if (typeof pcode!=="number") return;
 
+	var dbid=this.dbid.indexOf(db);
+	if (dbid==-1) {
+		this.dbid.push(db);
+		dbid=this.dbid.length-1;
+	}
+	return [pcode,dbid];
+}
 var pcodeFromSpan=function(start,len,db){
 	if (typeof len=="undefined" && typeof start!="undefined" && typeof start[1]!="undefined") {
 		db=len;
@@ -253,6 +265,14 @@ var saveToString=function() {
 }
 
 var get=function(pcode) {
+
+	if (pcode[1]) {
+		var externaldb=this.getExternal(pcode[1]);
+		if (!externaldb) return null;
+		return externaldb.get(pcode[0]);
+	} else if (typeof pcode[0]=="number") {
+		pcode=pcode[0];
+	}
 	return this.forward[pcode];
 }
 Paradigm.prototype.get=get;
@@ -268,6 +288,8 @@ Paradigm.prototype.pcodeFromSpan=pcodeFromSpan;
 Paradigm.prototype.spanFromPcode=spanFromPcode;
 Paradigm.prototype.getDBName=getDBName;
 Paradigm.prototype.getExternal=getExternal;
+//Paradigm.prototype.getExternalDbIdByName=getExternalDbIdByName;
+Paradigm.prototype.externalPCode=externalPCode;
 Paradigm.prototype.saveToString=saveToString;
 
 var API={open:open,lasterror:lasterror,isRel:isRel,loadFromString:loadFromString};
